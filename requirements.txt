@@ -3,6 +3,7 @@ xgboost
 firebase-admin
 gunicorn
 scikit-learn==1.7.2
-joblib==1.4.2
-pandas==2.2.2
-numpy==1.26.4
+joblib==1.5.1
+pandas==2.2.3
+numpy==2.3.1
+
