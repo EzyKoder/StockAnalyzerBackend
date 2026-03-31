@@ -18,6 +18,7 @@ app = Flask(__name__)
 # =====================================
 firebase_key = os.environ.get("FIREBASE_KEY")
 firebase_dict = json.loads(firebase_key)
+
 cred = credentials.Certificate(firebase_dict)
 firebase_admin.initialize_app(cred)
 db = firestore.client()
@@ -92,17 +93,13 @@ def filter_and_order_features(sector, incoming_features):
     return ordered
 
 # =====================================
-# LAZY MODEL LOADING (FIX FOR RENDER)
+# LOAD MODEL PER REQUEST (MEMORY SAFE)
 # =====================================
-MODEL_CACHE = {}
-
-def get_model(sector):
-    if sector not in MODEL_CACHE:
-        MODEL_CACHE[sector] = {
-            "reg": joblib.load(f"models/{sector}/regression.pkl"),
-            "clf": joblib.load(f"models/{sector}/classifier.pkl")
-        }
-    return MODEL_CACHE[sector]
+def load_model_for_sector(sector):
+    return {
+        "reg": joblib.load(f"models/{sector}/regression.pkl"),
+        "clf": joblib.load(f"models/{sector}/classifier.pkl")
+    }
 
 # =====================================
 # Confidence Score
@@ -116,7 +113,9 @@ def compute_confidence(reg_change, clf_proba):
 # Core Prediction Logic
 # =====================================
 def run_prediction(sector_name, company_name, features, current_price):
-    models = get_model(sector_name)
+
+    # Load only required model
+    models = load_model_for_sector(sector_name)
 
     model_reg = models["reg"]
     model_clf = models["clf"]
@@ -124,12 +123,15 @@ def run_prediction(sector_name, company_name, features, current_price):
     f = filter_and_order_features(sector_name, features)
     X = pd.DataFrame([f])
 
+    # Regression
     pct_change = float(model_reg.predict(X)[0])
     predicted_price = float(current_price + (current_price * (pct_change / 100)))
 
+    # Classification
     direction = int(model_clf.predict(X)[0])
     proba = float(model_clf.predict_proba(X).max())
 
+    # Confidence
     confidence = compute_confidence(pct_change, proba)
 
     result = {
@@ -150,7 +152,11 @@ def run_prediction(sector_name, company_name, features, current_price):
       .document("results") \
       .set(result)
 
-    gc.collect()  # free memory
+    # Free memory (IMPORTANT for Render)
+    del model_reg
+    del model_clf
+    del models
+    gc.collect()
 
     return result
 
@@ -180,6 +186,7 @@ def predict(sector):
             current_price=current_price
         )
         return jsonify(result)
+
     except Exception as e:
         print("ERROR:", str(e))
         return jsonify({"error": str(e)}), 500
@@ -198,11 +205,6 @@ def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "services": {}
     }
-
-    try:
-        status["services"]["models_loaded"] = list(MODEL_CACHE.keys())
-    except Exception as e:
-        status["services"]["models"] = str(e)
 
     try:
         db.collection("health_check").document("test").set({
