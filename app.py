@@ -52,7 +52,7 @@ SECTOR_FEATURES = {
         "Operating Cash Flow (₹ Cr)","Dividend Yield (%)","P/B Ratio"
     ],
 
-    "real_estate": [
+    "realestate": [
         "Net Debt-to-Equity Ratio","Interest Coverage Ratio","EBITDA Margin (%)",
         "Project Completion Ratio (%)","Sales/Booking Growth (%)",
         "Operating Cash Flow (₹ Cr)","P/B Ratio","ROCE (%)","ROE (%)"
