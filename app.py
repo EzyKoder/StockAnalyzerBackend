@@ -266,6 +266,34 @@ def predict(sector):
 def home():
     return jsonify({"status": "API Running Successfully"})
 
+@app.route("/health", methods=["GET"])
+def health_check():
+    status = {
+        "status": "running",
+        "timestamp": datetime.utcnow().isoformat(),
+        "services": {}
+    }
+
+    # ✅ Check Models
+    try:
+        model_status = {}
+        for sector in MODELS:
+            model_status[sector] = "loaded" if MODELS[sector]["reg"] and MODELS[sector]["clf"] else "missing"
+        status["services"]["models"] = model_status
+    except Exception as e:
+        status["services"]["models"] = f"error: {str(e)}"
+
+    # ✅ Check Firebase
+    try:
+        db.collection("health_check").document("test").set({
+            "ping": True,
+            "time": datetime.utcnow().isoformat()
+        })
+        status["services"]["firebase"] = "connected"
+    except Exception as e:
+        status["services"]["firebase"] = f"error: {str(e)}"
+
+    return jsonify(status), 200
 # =====================================
 # Run Server
 # =====================================
