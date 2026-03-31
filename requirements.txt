@@ -1,8 +1,8 @@
 flask
-numpy
-pandas
-scikit-learn
 xgboost
-joblib
 firebase-admin
 gunicorn
+scikit-learn==1.7.2
+joblib==1.4.2
+pandas==2.2.2
+numpy==1.26.4
